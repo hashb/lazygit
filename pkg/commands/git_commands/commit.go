@@ -325,7 +325,7 @@ func (self *CommitCommands) GetCommitHeaderAsString(hash string) (string, error)
 	// Replicate git show's default header format: yellow hash + auto-colored
 	// decorations + author + date. %(if)%(then)%(end) conditionally includes
 	// decorations only when they exist (requires git >= 2.15).
-	format := `commit %C(yellow)%H%Creset%(if)%D%(then) %C(auto)(%D)%Creset%(end)%nAuthor: %aN <%aE>%nDate:   %aD`
+	format := `commit %C(yellow)%H%Creset %C(auto)%D%Creset%nAuthor: %aN <%aE>%nDate:   %aD`
 	cmdArgs := NewGitCmd("log").
 		Arg("-1").
 		Arg("--color=" + colorArg).
