@@ -79,8 +79,13 @@ func (self *DiffHelper) GetUpdateTaskForRenderingCommitsDiff(commit *models.Comm
 	}
 
 	if self.c.UserConfig().Gui.CommitMessageRenderMarkdown {
-		if body, err := self.c.Git().Commit.GetCommitMessageBody(commit.Hash()); err == nil && body != "" {
-			prefix := utils.RenderMarkdown(body) + "\n\n"
+		header, err1 := self.c.Git().Commit.GetCommitHeaderAsString(commit.Hash())
+		body, err2 := self.c.Git().Commit.GetCommitMessageBody(commit.Hash())
+		if err1 == nil && err2 == nil {
+			prefix := header + "\n\n"
+			if rendered := utils.RenderMarkdown(body); rendered != "" {
+				prefix += rendered + "\n\n"
+			}
 			cmdObj := self.c.Git().Commit.ShowCmdObjNoHeader(commit.Hash(), self.FilterPathsForCommit(commit))
 			return types.NewRunPtyTaskWithPrefix(cmdObj.GetCmd(), prefix)
 		}

@@ -317,6 +317,29 @@ func (self *CommitCommands) GetCommitMessageBody(hash string) (string, error) {
 	return strings.TrimRight(output, "\n"), nil
 }
 
+// GetCommitHeaderAsString returns the commit metadata header (hash, decorations,
+// author, date) formatted with ANSI colors similar to git show. Used to
+// reconstruct the header when replacing the commit message with markdown.
+func (self *CommitCommands) GetCommitHeaderAsString(hash string) (string, error) {
+	colorArg := self.pagerConfig.GetColorArg()
+	// Replicate git show's default header format: yellow hash + auto-colored
+	// decorations + author + date. %(if)%(then)%(end) conditionally includes
+	// decorations only when they exist (requires git >= 2.15).
+	format := `commit %C(yellow)%H%Creset%(if)%D%(then) %C(auto)(%D)%Creset%(end)%nAuthor: %aN <%aE>%nDate:   %aD`
+	cmdArgs := NewGitCmd("log").
+		Arg("-1").
+		Arg("--color=" + colorArg).
+		Arg("--format=" + format).
+		Arg(hash).
+		ToArgv()
+
+	output, err := self.cmd.New(cmdArgs).DontLog().RunWithOutput()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimRight(output, "\n"), nil
+}
+
 // Revert reverts the selected commits by hash. If isMerge is true, we'll pass -m 1
 // to say we want to revert the first parent of the merge commit, which is the one
 // people want in 99.9% of cases. In current git versions we could unconditionally
