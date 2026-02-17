@@ -272,6 +272,22 @@ func (self *CommitCommands) ShowFileContentCmdObj(hash string, filePath string) 
 	return self.cmd.New(cmdArgs).DontLog()
 }
 
+// GetCommitMessageBody returns the full commit message body (subject + body) for a given hash.
+// The output is the raw commit message as written by the author, suitable for markdown rendering.
+func (self *CommitCommands) GetCommitMessageBody(hash string) (string, error) {
+	cmdArgs := NewGitCmd("log").
+		Arg("-1").
+		Arg("--format=%B").
+		Arg(hash).
+		ToArgv()
+
+	output, err := self.cmd.New(cmdArgs).DontLog().RunWithOutput()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimRight(output, "\n"), nil
+}
+
 // Revert reverts the selected commits by hash. If isMerge is true, we'll pass -m 1
 // to say we want to revert the first parent of the merge commit, which is the one
 // people want in 99.9% of cases. In current git versions we could unconditionally

@@ -162,7 +162,7 @@ func (self *CommitFilesController) GetOnRenderToMain() func() {
 				SubTitle: self.c.Helpers().Diff.IgnoringWhitespaceSubTitle(),
 				Task:     task,
 			},
-			Secondary: secondaryPatchPanelUpdateOpts(self.c),
+			Secondary: secondaryPatchPanelUpdateOpts(self.c, nil),
 		})
 	}
 }

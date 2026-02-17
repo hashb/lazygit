@@ -287,19 +287,30 @@ func (self *LocalCommitsController) GetOnRenderToMain() func() {
 					SubTitle: self.c.Helpers().Diff.IgnoringWhitespaceSubTitle(),
 					Task:     task,
 				},
-				Secondary: secondaryPatchPanelUpdateOpts(self.c),
+				Secondary: secondaryPatchPanelUpdateOpts(self.c, commit),
 			})
 		})
 	}
 }
 
-func secondaryPatchPanelUpdateOpts(c *ControllerCommon) *types.ViewUpdateOpts {
+func secondaryPatchPanelUpdateOpts(c *ControllerCommon, commit *models.Commit) *types.ViewUpdateOpts {
 	if c.Git().Patch.PatchBuilder.Active() {
 		patch := c.Git().Patch.PatchBuilder.RenderAggregatedPatch(false)
 
 		return &types.ViewUpdateOpts{
 			Task:  types.NewRenderStringWithoutScrollTask(patch),
 			Title: c.Tr.CustomPatch,
+		}
+	}
+
+	if c.UserConfig().Gui.CommitMessageRenderMarkdown && commit != nil && commit.Action == models.ActionNone {
+		body, err := c.Git().Commit.GetCommitMessageBody(commit.Hash())
+		if err == nil && body != "" {
+			rendered := utils.RenderMarkdown(body)
+			return &types.ViewUpdateOpts{
+				Task:  types.NewRenderStringTask(rendered),
+				Title: "Commit message",
+			}
 		}
 	}
 
