@@ -265,6 +265,35 @@ func (self *CommitCommands) ShowCmdObj(hash string, filterPaths []string) *oscom
 	return self.cmd.New(cmdArgs).DontLog()
 }
 
+// ShowCmdObjNoHeader is like ShowCmdObj but suppresses the commit header (author,
+// date, and message lines). Used when rendering the commit message separately
+// (e.g. as markdown) so that it isn't shown twice.
+func (self *CommitCommands) ShowCmdObjNoHeader(hash string, filterPaths []string) *oscommands.CmdObj {
+	contextSize := self.UserConfig().Git.DiffContextSize
+
+	extDiffCmd := self.pagerConfig.GetExternalDiffCommand()
+	useExtDiffGitConfig := self.pagerConfig.GetUseExternalDiffGitConfig()
+	cmdArgs := NewGitCmd("show").
+		Config("diff.noprefix=false").
+		ConfigIf(extDiffCmd != "", "diff.external="+extDiffCmd).
+		ArgIfElse(extDiffCmd != "" || useExtDiffGitConfig, "--ext-diff", "--no-ext-diff").
+		Arg("--submodule").
+		Arg("--color="+self.pagerConfig.GetColorArg()).
+		Arg(fmt.Sprintf("--unified=%d", contextSize)).
+		Arg("--stat").
+		Arg("--format=format:"). // suppress commit header (author, date, message)
+		Arg("-p").
+		Arg(hash).
+		ArgIf(self.UserConfig().Git.IgnoreWhitespaceInDiffView, "--ignore-all-space").
+		Arg(fmt.Sprintf("--find-renames=%d%%", self.UserConfig().Git.RenameSimilarityThreshold)).
+		Arg("--").
+		Arg(filterPaths...).
+		Dir(self.repoPaths.worktreePath).
+		ToArgv()
+
+	return self.cmd.New(cmdArgs).DontLog()
+}
+
 func (self *CommitCommands) ShowFileContentCmdObj(hash string, filePath string) *oscommands.CmdObj {
 	cmdArgs := NewGitCmd("show").
 		Arg(fmt.Sprintf("%s:%s", hash, filePath)).
