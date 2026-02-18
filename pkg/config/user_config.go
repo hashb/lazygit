@@ -160,6 +160,9 @@ type GuiConfig struct {
 	CommitAuthorLongLength int `yaml:"commitAuthorLongLength"`
 	// Length of commit hash in commits view. 0 shows '*' if NF icons aren't on.
 	CommitHashLength int `yaml:"commitHashLength" jsonschema:"minimum=0"`
+	// If true, render commit messages as markdown in the secondary panel when viewing a commit.
+	// This renders headers, bold, italic, code blocks, bullet lists, and other basic markdown elements.
+	CommitMessageRenderMarkdown bool `yaml:"commitMessageRenderMarkdown"`
 	// If true, show commit hashes alongside branch names in the branches view.
 	ShowBranchCommitHash bool `yaml:"showBranchCommitHash"`
 	// Whether to show the divergence from the base branch in the branches view.

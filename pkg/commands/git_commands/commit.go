@@ -265,11 +265,79 @@ func (self *CommitCommands) ShowCmdObj(hash string, filterPaths []string) *oscom
 	return self.cmd.New(cmdArgs).DontLog()
 }
 
+// ShowCmdObjNoHeader is like ShowCmdObj but suppresses the commit header (author,
+// date, and message lines). Used when rendering the commit message separately
+// (e.g. as markdown) so that it isn't shown twice.
+func (self *CommitCommands) ShowCmdObjNoHeader(hash string, filterPaths []string) *oscommands.CmdObj {
+	contextSize := self.UserConfig().Git.DiffContextSize
+
+	extDiffCmd := self.pagerConfig.GetExternalDiffCommand()
+	useExtDiffGitConfig := self.pagerConfig.GetUseExternalDiffGitConfig()
+	cmdArgs := NewGitCmd("show").
+		Config("diff.noprefix=false").
+		ConfigIf(extDiffCmd != "", "diff.external="+extDiffCmd).
+		ArgIfElse(extDiffCmd != "" || useExtDiffGitConfig, "--ext-diff", "--no-ext-diff").
+		Arg("--submodule").
+		Arg("--color="+self.pagerConfig.GetColorArg()).
+		Arg(fmt.Sprintf("--unified=%d", contextSize)).
+		Arg("--stat").
+		Arg("--format=format:"). // suppress commit header (author, date, message)
+		Arg("-p").
+		Arg(hash).
+		ArgIf(self.UserConfig().Git.IgnoreWhitespaceInDiffView, "--ignore-all-space").
+		Arg(fmt.Sprintf("--find-renames=%d%%", self.UserConfig().Git.RenameSimilarityThreshold)).
+		Arg("--").
+		Arg(filterPaths...).
+		Dir(self.repoPaths.worktreePath).
+		ToArgv()
+
+	return self.cmd.New(cmdArgs).DontLog()
+}
+
 func (self *CommitCommands) ShowFileContentCmdObj(hash string, filePath string) *oscommands.CmdObj {
 	cmdArgs := NewGitCmd("show").
 		Arg(fmt.Sprintf("%s:%s", hash, filePath)).
 		ToArgv()
 	return self.cmd.New(cmdArgs).DontLog()
+}
+
+// GetCommitMessageBody returns the full commit message body (subject + body) for a given hash.
+// The output is the raw commit message as written by the author, suitable for markdown rendering.
+func (self *CommitCommands) GetCommitMessageBody(hash string) (string, error) {
+	cmdArgs := NewGitCmd("log").
+		Arg("-1").
+		Arg("--format=%B").
+		Arg(hash).
+		ToArgv()
+
+	output, err := self.cmd.New(cmdArgs).DontLog().RunWithOutput()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimRight(output, "\n"), nil
+}
+
+// GetCommitHeaderAsString returns the commit metadata header (hash, decorations,
+// author, date) formatted with ANSI colors similar to git show. Used to
+// reconstruct the header when replacing the commit message with markdown.
+func (self *CommitCommands) GetCommitHeaderAsString(hash string) (string, error) {
+	colorArg := self.pagerConfig.GetColorArg()
+	// Replicate git show's default header format: yellow hash + auto-colored
+	// decorations + author + date. %(if)%(then)%(end) conditionally includes
+	// decorations only when they exist (requires git >= 2.15).
+	format := `commit %C(yellow)%H%Creset %C(auto)%D%Creset%nAuthor: %aN <%aE>%nDate:   %aD`
+	cmdArgs := NewGitCmd("log").
+		Arg("-1").
+		Arg("--color=" + colorArg).
+		Arg("--format=" + format).
+		Arg(hash).
+		ToArgv()
+
+	output, err := self.cmd.New(cmdArgs).DontLog().RunWithOutput()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimRight(output, "\n"), nil
 }
 
 // Revert reverts the selected commits by hash. If isMerge is true, we'll pass -m 1

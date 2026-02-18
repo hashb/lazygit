@@ -10,6 +10,7 @@ import (
 	"github.com/jesseduffield/lazygit/pkg/gui/modes/diffing"
 	"github.com/jesseduffield/lazygit/pkg/gui/style"
 	"github.com/jesseduffield/lazygit/pkg/gui/types"
+	"github.com/jesseduffield/lazygit/pkg/utils"
 	"github.com/samber/lo"
 )
 
@@ -75,6 +76,19 @@ func (self *DiffHelper) GetUpdateTaskForRenderingCommitsDiff(commit *models.Comm
 		cmdObj := self.c.Git().Diff.DiffCmdObj(args)
 		prefix := style.FgYellow.Sprintf("%s %s-%s\n\n", self.c.Tr.ShowingDiffForRange, from.ShortRefName(), to.ShortRefName())
 		return types.NewRunPtyTaskWithPrefix(cmdObj.GetCmd(), prefix)
+	}
+
+	if self.c.UserConfig().Gui.CommitMessageRenderMarkdown {
+		header, err1 := self.c.Git().Commit.GetCommitHeaderAsString(commit.Hash())
+		body, err2 := self.c.Git().Commit.GetCommitMessageBody(commit.Hash())
+		if err1 == nil && err2 == nil {
+			prefix := header + "\n\n"
+			if rendered := utils.RenderMarkdown(body); rendered != "" {
+				prefix += rendered + "\n\n"
+			}
+			cmdObj := self.c.Git().Commit.ShowCmdObjNoHeader(commit.Hash(), self.FilterPathsForCommit(commit))
+			return types.NewRunPtyTaskWithPrefix(cmdObj.GetCmd(), prefix)
+		}
 	}
 
 	cmdObj := self.c.Git().Commit.ShowCmdObj(commit.Hash(), self.FilterPathsForCommit(commit))
